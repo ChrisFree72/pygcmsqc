@@ -1,0 +1,23 @@
+utils::globalVariables(c(
+  "%>%", ".data", ".rowid", ":=",
+  "Area", "Area_BG_Sub", "Area_Blank", "Avg_Area",
+  "Avg_R2_Gain_Batch", "Avg_R2_Gain_Rounded", "Batch_ID",
+  "Blank_Norm_ug_per_g", "Blank_SD_Norm_ug_per_g",
+  "Blank_SD_Unnorm_ug_per_g", "Blank_Unnorm_ug_per_g",
+  "Calibration_Factor", "Calibrator_Level", "Calibrator_Name",
+  "Calibrator_Weight", "Component", "Fragment_Ion",
+  "Improvement_Flag", "Molecule_Name", "Molecule_Prefix",
+  "Multiplication_Factor", "New_R2_Norm", "New_R2_Unnorm",
+  "Norm_Calc_Concentration", "Norm_Slope", "Norm_Y_Int",
+  "Normalized_Area", "Normalized_Area_BG_Sub", "Normalized_Area_Blank",
+  "Original_R2_Norm", "Original_R2_Unnorm", "PC1", "PC2",
+  "Plastic", "Plastic_Join", "Removed_Calibrators",
+  "Replicate_Name", "Replicate_Type", "Replicates",
+  "Scaled_Concentration", "Std_Area", "Unknown_Weight",
+  "Unnorm_Calc_Concentration", "Unnorm_Slope", "Unnorm_Y_Int",
+  "Variance_Pct", "as.formula", "coef", "combn", "lm",
+  "lower", "mean_val", "n", "name_len", "row_idx", "sd",
+  "sd_val", "setNames", "type", "upper", "value",
+  "value_to_plot", "where", "x", "x_label", "x_to_plot",
+  "y", "y_to_plot"
+))

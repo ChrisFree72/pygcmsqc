@@ -1,0 +1,42 @@
+Package: pygcmsqc
+Type: Package
+Title: Quality Control Pipeline for Pyrolysis GC-MS Data
+Version: 0.1.0
+Authors@R: person("Christian", "Freeman", email = "CDFREE2@emory.edu", role = c("aut", "cre"))
+Description: A structured pipeline for processing, calibrating, and visualizing
+    pyrolysis gas chromatography-mass spectrometry (py-GC-MS) data across multiple
+    analytical batches. Implements weighted 1/x linear calibration with automated
+    calibrator optimization, blank-subtracted concentration calculation in ug/g,
+    LOD/LOQ estimation from blank distributions, and a full suite of QC,
+    internal standard, calibration curve, and PCA diagnostic plots exported as
+    publication-ready PDFs and styled Excel workbooks.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.3.3
+Imports:
+   magrittr,
+    readr,
+    readxl,
+    openxlsx,
+    ggrepel,
+    patchwork,
+    forcats,
+    purrr,
+    rlang,
+    stringr,
+    dplyr,
+    tidyr,
+    ggplot2,
+    tibble,
+    stats,
+    grDevices,
+    grid
+Suggests:
+    devtools,
+    roxygen2,
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr
+URL: https://github.com/ChrisFree72/pygcmsqc
+BugReports: https://github.com/ChrisFree72/pygcmsqc/issues
