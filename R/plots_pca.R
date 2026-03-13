@@ -399,8 +399,6 @@ make_pooled_unknown_pca_plot <- function(scores_df, title,
   pc1_lab <- paste0("PC1 (", unique(scores_df$PC1_var_pct)[1], "%)")
   pc2_lab <- paste0("PC2 (", unique(scores_df$PC2_var_pct)[1], "%)")
 
-  # Combined labels make it easier to identify which batch each point belongs
-  # to without relying solely on color (useful for colorblind accessibility)
   if (use_combined_labels) {
     scores_df <- scores_df %>%
       dplyr::mutate(Label = paste0(Replicate_Name, " (", Batch_ID, ")"))
@@ -538,14 +536,12 @@ export_pca_by_batch <- function(all_batches_subtracted,
                                 width       = 8.5,
                                 height      = 11) {
 
-  # Create pca_output subfolder automatically if it doesn't exist
   plot_dir <- file.path(out_dir, "pca_output")
   if (!dir.exists(plot_dir)) {
     dir.create(plot_dir, recursive = TRUE)
     message("Created output subfolder: ", plot_dir)
   }
 
-  # Placeholder for batches with insufficient data
   empty_plot <- function(msg) {
     ggplot2::ggplot() +
       ggplot2::annotate("text", x = 0.5, y = 0.5, label = msg,
@@ -564,12 +560,8 @@ export_pca_by_batch <- function(all_batches_subtracted,
 
   norm_path <- file.path(plot_dir, file_norm)
   grDevices::pdf(norm_path, width = width, height = height)
-  on.exit(try(grDevices::dev.off(), silent = TRUE), add = TRUE)
-
-  all_bids_norm <- sort(unique(c(data_norm$scores$Batch_ID,
-                                 data_norm$scree$Batch_ID)))
-
-  for (bid in all_bids_norm) {
+  for (bid in sort(unique(c(data_norm$scores$Batch_ID,
+                             data_norm$scree$Batch_ID)))) {
     p_pca <- make_pca_plot_for_batch(
       dplyr::filter(data_norm$scores, Batch_ID == bid),
       title     = paste0("PCA (Normalized ug/g) \u2014 Batch ", bid),
@@ -582,21 +574,16 @@ export_pca_by_batch <- function(all_batches_subtracted,
     )
     if (is.null(p_pca))   p_pca   <- empty_plot("Normalized PCA: insufficient data")
     if (is.null(p_scree)) p_scree <- empty_plot("Normalized Scree: insufficient data")
-
-    # Stack PCA above scree using patchwork; annotate with batch title
     combined <- (p_pca / p_scree) +
       patchwork::plot_annotation(
-        title = paste0("Batch ", bid,
-                       " \u2014 Normalized PCA & Reverse Scree"),
+        title = paste0("Batch ", bid, " \u2014 Normalized PCA & Reverse Scree"),
         theme = ggplot2::theme(
-          plot.title = ggplot2::element_text(face = "bold",
-                                             size = base_size + 3)
+          plot.title = ggplot2::element_text(face = "bold", size = base_size + 3)
         )
       )
     print(combined)
   }
   grDevices::dev.off()
-  on.exit()  # clear the on.exit handler after explicit dev.off
   message("Written: ", norm_path)
 
   # ── Unnormalized ───────────────────────────────────────────────────────────
@@ -607,12 +594,8 @@ export_pca_by_batch <- function(all_batches_subtracted,
 
   unnorm_path <- file.path(plot_dir, file_unnorm)
   grDevices::pdf(unnorm_path, width = width, height = height)
-  on.exit(try(grDevices::dev.off(), silent = TRUE), add = TRUE)
-
-  all_bids_unnorm <- sort(unique(c(data_unnorm$scores$Batch_ID,
-                                   data_unnorm$scree$Batch_ID)))
-
-  for (bid in all_bids_unnorm) {
+  for (bid in sort(unique(c(data_unnorm$scores$Batch_ID,
+                             data_unnorm$scree$Batch_ID)))) {
     p_pca <- make_pca_plot_for_batch(
       dplyr::filter(data_unnorm$scores, Batch_ID == bid),
       title     = paste0("PCA (Unnormalized ug/g) \u2014 Batch ", bid),
@@ -625,20 +608,16 @@ export_pca_by_batch <- function(all_batches_subtracted,
     )
     if (is.null(p_pca))   p_pca   <- empty_plot("Unnormalized PCA: insufficient data")
     if (is.null(p_scree)) p_scree <- empty_plot("Unnormalized Scree: insufficient data")
-
     combined <- (p_pca / p_scree) +
       patchwork::plot_annotation(
-        title = paste0("Batch ", bid,
-                       " \u2014 Unnormalized PCA & Reverse Scree"),
+        title = paste0("Batch ", bid, " \u2014 Unnormalized PCA & Reverse Scree"),
         theme = ggplot2::theme(
-          plot.title = ggplot2::element_text(face = "bold",
-                                             size = base_size + 3)
+          plot.title = ggplot2::element_text(face = "bold", size = base_size + 3)
         )
       )
     print(combined)
   }
   grDevices::dev.off()
-  on.exit()
   message("Written: ", unnorm_path)
 
   message("Per-batch PCA export complete.")
@@ -719,7 +698,6 @@ export_pooled_unknown_pca <- function(all_batches_subtracted,
 
   legend_position <- match.arg(legend_position)
 
-  # Create pca_output subfolder automatically if it doesn't exist
   plot_dir <- file.path(out_dir, "pca_output")
   if (!dir.exists(plot_dir)) {
     dir.create(plot_dir, recursive = TRUE)
@@ -760,13 +738,11 @@ export_pooled_unknown_pca <- function(all_batches_subtracted,
     )
     if (is.null(p_pca))   p_pca   <- empty_plot("Pooled Unknown PCA (Normalized): insufficient data")
     if (is.null(p_scree)) p_scree <- empty_plot("Reverse Scree (Normalized): insufficient data")
-
     combined <- (p_pca / p_scree) +
       patchwork::plot_annotation(
         title = "Project-wide Unknown-only \u2014 Normalized PCA & Reverse Scree",
         theme = ggplot2::theme(
-          plot.title = ggplot2::element_text(face = "bold",
-                                             size = base_size + 3)
+          plot.title = ggplot2::element_text(face = "bold", size = base_size + 3)
         )
       )
     print(combined)
@@ -798,13 +774,11 @@ export_pooled_unknown_pca <- function(all_batches_subtracted,
     )
     if (is.null(p_pca))   p_pca   <- empty_plot("Pooled Unknown PCA (Unnormalized): insufficient data")
     if (is.null(p_scree)) p_scree <- empty_plot("Reverse Scree (Unnormalized): insufficient data")
-
     combined <- (p_pca / p_scree) +
       patchwork::plot_annotation(
         title = "Project-wide Unknown-only \u2014 Unnormalized PCA & Reverse Scree",
         theme = ggplot2::theme(
-          plot.title = ggplot2::element_text(face = "bold",
-                                             size = base_size + 3)
+          plot.title = ggplot2::element_text(face = "bold", size = base_size + 3)
         )
       )
     print(combined)
