@@ -36,7 +36,7 @@
 #   traditional descending scree when many small components are compressed
 #   on the right side.
 #
-# Output layout: portrait PDF (8.5 × 11 inches), PCA biplot stacked above
+# Output layout: portrait PDF (8.5 x 11 inches), PCA biplot stacked above
 #   reverse scree, one page per batch.
 #
 # Output subfolder: pca_output/
@@ -84,15 +84,12 @@ prepare_pca_by_batch <- function(df, value_col,
                   "Molecule_Prefix") %in% names(df)))
   stopifnot(value_col %in% names(df))
 
-  # Clip negatives to 0 — PCA on concentration data should not have
-  # negative values; they represent below-blank measurements
   df_sanitized <- df %>%
     dplyr::mutate(
       !!rlang::sym(value_col) := ifelse(!!rlang::sym(value_col) < 0, 0,
                                         !!rlang::sym(value_col))
     )
 
-  # Pivot to wide format: rows = replicates, columns = analytes
   df_wide <- df_sanitized %>%
     dplyr::select(Batch_ID, Replicate_Name, Replicate_Type,
                   Molecule_Prefix, !!rlang::sym(value_col)) %>%
@@ -112,27 +109,22 @@ prepare_pca_by_batch <- function(df, value_col,
     mat      <- batch_df %>%
       dplyr::select(-Batch_ID, -Replicate_Name, -Replicate_Type)
 
-    # Drop analytes that are entirely NA for this batch
     mat <- mat[, colSums(!is.na(mat)) > 0, drop = FALSE]
     if (ncol(mat) < min_features) next
 
-    # NA handling
     if (na_method == "median") {
       mat <- as.data.frame(lapply(mat, function(col) {
         m <- stats::median(col, na.rm = TRUE)
         if (is.finite(m)) col[is.na(col)] <- m
         col
       }))
-      # Re-clip negatives introduced by imputation
       mat <- as.data.frame(lapply(mat, function(col) ifelse(col < 0, 0, col)))
     }
 
-    # Remove rows with remaining NA (those not resolved by median imputation)
     complete_rows <- stats::complete.cases(mat)
     mat_complete  <- mat[complete_rows, , drop = FALSE]
     meta_complete <- meta[complete_rows, , drop = FALSE]
 
-    # Drop zero-variance analytes — prcomp(scale. = TRUE) requires variance > 0
     if (ncol(mat_complete) == 0) next
     var_cols     <- sapply(mat_complete, function(x) stats::var(x, na.rm = TRUE))
     mat_complete <- mat_complete[, var_cols > 0, drop = FALSE]
@@ -140,7 +132,6 @@ prepare_pca_by_batch <- function(df, value_col,
     if (ncol(mat_complete) < min_features ||
         nrow(mat_complete) < min_samples) next
 
-    # Run PCA: center and scale so all analytes contribute equally
     pca      <- stats::prcomp(mat_complete, center = TRUE, scale. = TRUE)
     var_expl <- pca$sdev^2 / sum(pca$sdev^2)
 
@@ -156,7 +147,6 @@ prepare_pca_by_batch <- function(df, value_col,
                              else NA_real_, 1)
     )
 
-    # Reverse scree: arrange smallest → largest for elbow identification
     scree_list[[bid]] <- tibble::tibble(
       Batch_ID     = unique(meta_complete$Batch_ID)[1],
       Component    = paste0("PC", seq_along(var_expl)),
@@ -197,7 +187,6 @@ prepare_pooled_unknown_pca <- function(df, value_col,
 
   empty <- list(scores = tibble::tibble(), scree = tibble::tibble())
 
-  # Filter to Unknown replicates only and clip negatives
   df_unknown <- df %>%
     dplyr::filter(Replicate_Type == "Unknown") %>%
     dplyr::mutate(
@@ -210,7 +199,6 @@ prepare_pooled_unknown_pca <- function(df, value_col,
     return(empty)
   }
 
-  # Pivot wide: use mean to resolve any duplicate replicate/analyte pairs
   wide <- df_unknown %>%
     dplyr::select(Batch_ID, Replicate_Name, Molecule_Prefix, value) %>%
     tidyr::pivot_wider(
@@ -223,14 +211,12 @@ prepare_pooled_unknown_pca <- function(df, value_col,
   meta <- wide %>% dplyr::select(Batch_ID, Replicate_Name)
   mat  <- wide %>% dplyr::select(-Batch_ID, -Replicate_Name)
 
-  # Drop all-NA analytes
   mat <- mat[, colSums(!is.na(mat)) > 0, drop = FALSE]
   if (ncol(mat) < min_features) {
     warning("Insufficient analyte features for pooled Unknown PCA.")
     return(empty)
   }
 
-  # NA handling
   if (na_method == "median") {
     mat <- as.data.frame(lapply(mat, function(col) {
       m <- stats::median(col, na.rm = TRUE)
@@ -289,15 +275,6 @@ prepare_pooled_unknown_pca <- function(df, value_col,
 # ══ Internal helpers: plot builders ══════════════════════════════════════════
 
 # ── make_pca_plot_for_batch ───────────────────────────────────────────────────
-#
-# Builds a PCA biplot for a single batch. Points are colored by Replicate_Type
-# and labeled with Replicate_Name using ggrepel for non-overlapping labels.
-#
-# @param scores_df_batch A data frame of PCA scores for one batch.
-# @param title           Character. Plot title.
-# @param base_size       Numeric. Base font size. Default 10.
-# @return A ggplot object, or NULL if scores_df_batch is empty.
-#
 #' @keywords internal
 make_pca_plot_for_batch <- function(scores_df_batch, title, base_size = 10) {
   if (nrow(scores_df_batch) == 0) return(NULL)
@@ -329,16 +306,6 @@ make_pca_plot_for_batch <- function(scores_df_batch, title, base_size = 10) {
 
 
 # ── make_reverse_scree_plot_for_batch ─────────────────────────────────────────
-#
-# Builds a reverse scree bar chart for one batch. Components are ordered
-# smallest to largest variance explained (left to right) to highlight
-# the elbow more clearly than a traditional descending scree.
-#
-# @param scree_df_batch A data frame of scree data for one batch.
-# @param title          Character. Plot title.
-# @param base_size      Numeric. Base font size. Default 10.
-# @return A ggplot object, or NULL if scree_df_batch is empty.
-#
 #' @keywords internal
 make_reverse_scree_plot_for_batch <- function(scree_df_batch, title,
                                               base_size = 10) {
@@ -355,7 +322,7 @@ make_reverse_scree_plot_for_batch <- function(scree_df_batch, title,
     ) +
     ggplot2::labs(
       title = title,
-      x     = "Principal Components (reverse: smallest \u2192 largest)",
+      x     = "Principal Components (reverse: smallest -> largest)",
       y     = "Variance Explained (%)"
     ) +
     theme_minimal_bold(base_size = base_size) +
@@ -371,19 +338,6 @@ make_reverse_scree_plot_for_batch <- function(scree_df_batch, title,
 
 
 # ── make_pooled_unknown_pca_plot ──────────────────────────────────────────────
-#
-# Builds a PCA biplot for the pooled Unknown-only analysis. Points are
-# colored by Batch_ID (not Replicate_Type) to reveal between-batch effects.
-# Labels show "Replicate_Name (Batch_ID)" when use_combined_labels = TRUE.
-#
-# @param scores_df          A data frame of pooled PCA scores.
-# @param title              Character. Plot title.
-# @param base_size          Numeric. Base font size.
-# @param use_combined_labels Logical. If TRUE, labels show
-#                            "Replicate_Name (Batch_ID)". Default TRUE.
-# @param legend_position    Character. ggplot2 legend position.
-# @return A ggplot object, or NULL if scores_df is empty.
-#
 #' @keywords internal
 make_pooled_unknown_pca_plot <- function(scores_df, title,
                                          base_size           = 10,
@@ -432,15 +386,6 @@ make_pooled_unknown_pca_plot <- function(scores_df, title,
 
 
 # ── make_pooled_unknown_reverse_scree_plot ────────────────────────────────────
-#
-# Builds a reverse scree plot for the pooled Unknown-only PCA.
-#
-# @param scree_df       A data frame of pooled scree data.
-# @param title          Character. Plot title.
-# @param base_size      Numeric. Base font size.
-# @param legend_position Character. ggplot2 legend position.
-# @return A ggplot object, or NULL if scree_df is empty.
-#
 #' @keywords internal
 make_pooled_unknown_reverse_scree_plot <- function(
     scree_df, title, base_size = 10,
@@ -460,7 +405,7 @@ make_pooled_unknown_reverse_scree_plot <- function(
     ) +
     ggplot2::labs(
       title = title,
-      x     = "Principal Components (reverse: smallest \u2192 largest)",
+      x     = "Principal Components (reverse: smallest -> largest)",
       y     = "Variance Explained (%)"
     ) +
     theme_minimal_bold(base_size = base_size) +
@@ -478,8 +423,6 @@ make_pooled_unknown_reverse_scree_plot <- function(
 
 # ══ Exported pipeline functions ═══════════════════════════════════════════════
 
-# ── export_pca_by_batch ───────────────────────────────────────────────────────
-#
 #' Export per-batch PCA and reverse scree PDFs
 #'
 #' Runs PCA separately for each batch using all replicate types, then
@@ -508,14 +451,6 @@ make_pooled_unknown_reverse_scree_plot <- function(
 #'
 #' @return Invisibly returns \code{NULL}. Called for its side effect of
 #'   writing PDFs.
-#'
-#' @details
-#' \strong{Insufficient data:} Batches with fewer than 2 analyte features
-#' or 2 replicate rows after filtering are skipped with a placeholder page
-#' noting "insufficient data".
-#'
-#' \strong{What to modify:} \code{na_method} to switch between median
-#' imputation and complete-case analysis; \code{out_dir} for output location.
 #'
 #' @examples
 #' \dontrun{
@@ -564,19 +499,19 @@ export_pca_by_batch <- function(all_batches_subtracted,
                              data_norm$scree$Batch_ID)))) {
     p_pca <- make_pca_plot_for_batch(
       dplyr::filter(data_norm$scores, Batch_ID == bid),
-      title     = paste0("PCA (Normalized ug/g) \u2014 Batch ", bid),
+      title     = paste0("PCA (Normalized ug/g) - Batch ", bid),
       base_size = base_size
     )
     p_scree <- make_reverse_scree_plot_for_batch(
       dplyr::filter(data_norm$scree, Batch_ID == bid),
-      title     = paste0("Reverse Scree (Normalized ug/g) \u2014 Batch ", bid),
+      title     = paste0("Reverse Scree (Normalized ug/g) - Batch ", bid),
       base_size = base_size
     )
     if (is.null(p_pca))   p_pca   <- empty_plot("Normalized PCA: insufficient data")
     if (is.null(p_scree)) p_scree <- empty_plot("Normalized Scree: insufficient data")
-    combined <- (p_pca / p_scree) +
+    combined <- patchwork::wrap_plots(p_pca, p_scree, ncol = 1) +
       patchwork::plot_annotation(
-        title = paste0("Batch ", bid, " \u2014 Normalized PCA & Reverse Scree"),
+        title = paste0("Batch ", bid, " - Normalized PCA & Reverse Scree"),
         theme = ggplot2::theme(
           plot.title = ggplot2::element_text(face = "bold", size = base_size + 3)
         )
@@ -598,19 +533,19 @@ export_pca_by_batch <- function(all_batches_subtracted,
                              data_unnorm$scree$Batch_ID)))) {
     p_pca <- make_pca_plot_for_batch(
       dplyr::filter(data_unnorm$scores, Batch_ID == bid),
-      title     = paste0("PCA (Unnormalized ug/g) \u2014 Batch ", bid),
+      title     = paste0("PCA (Unnormalized ug/g) - Batch ", bid),
       base_size = base_size
     )
     p_scree <- make_reverse_scree_plot_for_batch(
       dplyr::filter(data_unnorm$scree, Batch_ID == bid),
-      title     = paste0("Reverse Scree (Unnormalized ug/g) \u2014 Batch ", bid),
+      title     = paste0("Reverse Scree (Unnormalized ug/g) - Batch ", bid),
       base_size = base_size
     )
     if (is.null(p_pca))   p_pca   <- empty_plot("Unnormalized PCA: insufficient data")
     if (is.null(p_scree)) p_scree <- empty_plot("Unnormalized Scree: insufficient data")
-    combined <- (p_pca / p_scree) +
+    combined <- patchwork::wrap_plots(p_pca, p_scree, ncol = 1) +
       patchwork::plot_annotation(
-        title = paste0("Batch ", bid, " \u2014 Unnormalized PCA & Reverse Scree"),
+        title = paste0("Batch ", bid, " - Unnormalized PCA & Reverse Scree"),
         theme = ggplot2::theme(
           plot.title = ggplot2::element_text(face = "bold", size = base_size + 3)
         )
@@ -625,8 +560,6 @@ export_pca_by_batch <- function(all_batches_subtracted,
 }
 
 
-# ── export_pooled_unknown_pca ─────────────────────────────────────────────────
-#
 #' Export pooled Unknown-only PCA and reverse scree PDFs
 #'
 #' Runs a single PCA across all batches using only Unknown replicates,
@@ -659,17 +592,6 @@ export_pca_by_batch <- function(all_batches_subtracted,
 #'
 #' @return Invisibly returns \code{NULL}. Called for its side effect of
 #'   writing PDFs.
-#'
-#' @details
-#' \strong{Why Unknown-only:} Including standards and QC replicates in a
-#' pooled PCA would dominate the variance decomposition since their
-#' concentration profiles differ systematically from environmental samples.
-#' Restricting to Unknowns gives a cleaner view of between-sample and
-#' between-batch variability in the actual study samples.
-#'
-#' \strong{What to modify:} \code{use_combined_labels = FALSE} for cleaner
-#' plots when batch IDs are already shown in the legend; \code{legend_position}
-#' to manage legend crowding with many batches.
 #'
 #' @examples
 #' \dontrun{
@@ -725,7 +647,7 @@ export_pooled_unknown_pca <- function(all_batches_subtracted,
   {
     p_pca <- make_pooled_unknown_pca_plot(
       pooled_norm$scores,
-      title               = "Pooled Unknown-only PCA (Normalized ug/g) \u2014 Color by Batch ID",
+      title               = "Pooled Unknown-only PCA (Normalized ug/g) - Color by Batch ID",
       base_size           = base_size,
       use_combined_labels = use_combined_labels,
       legend_position     = legend_position
@@ -738,9 +660,9 @@ export_pooled_unknown_pca <- function(all_batches_subtracted,
     )
     if (is.null(p_pca))   p_pca   <- empty_plot("Pooled Unknown PCA (Normalized): insufficient data")
     if (is.null(p_scree)) p_scree <- empty_plot("Reverse Scree (Normalized): insufficient data")
-    combined <- (p_pca / p_scree) +
+    combined <- patchwork::wrap_plots(p_pca, p_scree, ncol = 1) +
       patchwork::plot_annotation(
-        title = "Project-wide Unknown-only \u2014 Normalized PCA & Reverse Scree",
+        title = "Project-wide Unknown-only - Normalized PCA & Reverse Scree",
         theme = ggplot2::theme(
           plot.title = ggplot2::element_text(face = "bold", size = base_size + 3)
         )
@@ -761,7 +683,7 @@ export_pooled_unknown_pca <- function(all_batches_subtracted,
   {
     p_pca <- make_pooled_unknown_pca_plot(
       pooled_unnorm$scores,
-      title               = "Pooled Unknown-only PCA (Unnormalized ug/g) \u2014 Color by Batch ID",
+      title               = "Pooled Unknown-only PCA (Unnormalized ug/g) - Color by Batch ID",
       base_size           = base_size,
       use_combined_labels = use_combined_labels,
       legend_position     = legend_position
@@ -774,9 +696,9 @@ export_pooled_unknown_pca <- function(all_batches_subtracted,
     )
     if (is.null(p_pca))   p_pca   <- empty_plot("Pooled Unknown PCA (Unnormalized): insufficient data")
     if (is.null(p_scree)) p_scree <- empty_plot("Reverse Scree (Unnormalized): insufficient data")
-    combined <- (p_pca / p_scree) +
+    combined <- patchwork::wrap_plots(p_pca, p_scree, ncol = 1) +
       patchwork::plot_annotation(
-        title = "Project-wide Unknown-only \u2014 Unnormalized PCA & Reverse Scree",
+        title = "Project-wide Unknown-only - Unnormalized PCA & Reverse Scree",
         theme = ggplot2::theme(
           plot.title = ggplot2::element_text(face = "bold", size = base_size + 3)
         )
