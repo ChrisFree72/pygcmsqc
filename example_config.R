@@ -35,7 +35,7 @@
 # ══ 0. Install / load package ═════════════════════════════════════════════════
 #
 # Install from GitHub (run once, then comment out):
-# devtools::install_github("yourusername/pygcmsqc")
+# devtools::install_github("ChrisFree72/pygcmsqc")
 
 library(pygcmsqc)
 
